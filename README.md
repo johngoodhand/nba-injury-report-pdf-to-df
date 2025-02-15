@@ -19,15 +19,37 @@ pip install nba_injury_report
 
 Here's how you can use the pdf_to_df function:
 
-```python
-from nba_injury_report import pdf_to_df
+## Important Note
 
-# Path to your local NBA injury report PDF
-pdf_path = "path/to/your/injury_report.pdf"
+This package is designed to process NBA injury reports that follow the format used in **January 2025**.  
+The structure of these reports includes specific columns such as:
+- Game Date
+- Game Time
+- Matchup
+- Team
+- Player Name
+- Current Status
+- Reason
 
-# Convert PDF to DataFrame
-df = pdf_to_df(pdf_path)
+If the NBA updates the report format in the future, this package may require modifications to ensure compatibility.
 
-# Display the DataFrame
-print(df.head())
-```
+## Dependencies
+
+- pandas
+- pdfplumber
+
+These dependencies are automatically installed with the package.
+
+## Contributing
+
+Contributions are welcome!  
+If you encounter issues or have suggestions for improvements, please open an issue or submit a pull request on the GitHub repository:  
+https://github.com/yourusername/nba_injury_report
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+
+**Note:** This package is not affiliated with or endorsed by the National Basketball Association (NBA).
