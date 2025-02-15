@@ -12,7 +12,7 @@ This Python package provides a function, `pdf_to_df`, that converts NBA injury r
 Install the package using pip:
 
 ```bash
-pip install nba_injury_report
+pip install nba_injury_report_pdf_to_df
 ```
 
 ## Usage
