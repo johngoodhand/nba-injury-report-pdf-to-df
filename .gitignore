@@ -1,1 +1,5 @@
 src/nba_injury_report_pdf_to_df/__pycache__/
+
+# Ignore build artifacts
+dist/
+*.egg-info/

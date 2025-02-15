@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nba_injury_report_pdf_to_df"
-version = "0.1.0"
+version = "0.1.1"
 description = "Convert NBA injury reports from PDF to a DataFrame"
 authors = [{ name = "Your Name", email = "your.email@example.com" }]
 readme = "README.md"
