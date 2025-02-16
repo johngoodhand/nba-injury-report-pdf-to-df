@@ -6,6 +6,12 @@ from utils import path
 
 
 def get_nba_team_list():
+    """
+    Returns a list of all NBA team names.
+    
+    Returns:
+    list: A list of NBA team names as strings.
+    """
     nba_team_list = [
         'Atlanta Hawks',
         'Boston Celtics',
@@ -41,6 +47,12 @@ def get_nba_team_list():
 
 
 def get_status_list():
+    """
+    Returns a list of possible injury statuses.
+    
+    Returns:
+    list: A list of possible player statuses as strings.
+    """
     status_list = ['Available', 
                    'Questionable',
                    'Probable',
@@ -66,7 +78,7 @@ def check_for_multi_row_entry(df):
     status_list = get_status_list()
 
     # Compile regex pattern dynamically based on the status list
-    status_pattern = "|".join(map(re.escape, status_list))  # Escape special characters in status_list
+    status_pattern = "|".join(map(re.escape, status_list))
     regex_pattern = rf".+,\s?.+\s({status_pattern})$"
 
     # Create a boolean column based on the regex match
@@ -81,6 +93,12 @@ def fix_multi_row_entry_problem(df):
     row of the table as three separate lines. This function checks 
     for this problem with check_for_multi_row_entry() and corrects
     the issue.
+
+    Parameters:
+    df (pd.DataFrame): DataFrame containing raw injury report data.
+    
+    Returns:
+    pd.DataFrame: Corrected DataFrame with properly merged multi-row entries.
     '''
     df = check_for_multi_row_entry(df)
 
@@ -123,8 +141,8 @@ def check_for_new_date(df):
 
 def check_for_start_of_new_team(df):
     """
-    Checks if each entry in a column begins with a word from word_list and writes 
-    True or False to another column.
+    Checks if each entry in a column begins with a word from 
+    nba_team_list and writes True or False to another column.
 
     Parameters:
     df (pd.DataFrame): The DataFrame containing the column to check.
@@ -139,11 +157,13 @@ def check_for_start_of_new_team(df):
     nba_team_list = get_nba_team_list()
 
     # Create a regex pattern to match any word from the list at the start of the string
-    word_pattern = "|".join(map(re.escape, nba_team_list))  # Escape special characters in words
+    word_pattern = "|".join(map(re.escape, nba_team_list))
     regex_pattern = rf"^({word_pattern})\b"  # Ensures the word is at the beginning
 
-    # Apply the regex match and create a new boolean column
-    df['start_of_new_team'] = df['raw_string'].astype(str).str.match(regex_pattern, case=False)  # case-insensitive
+    # Apply the regex match and create a new boolean column (case-insensitive)
+    df['start_of_new_team'] = ( 
+        df['raw_string'].astype(str).str.match(regex_pattern, case=False)
+    )
 
     return df
 
@@ -209,44 +229,37 @@ def check_for_not_yet_submitted(df):
 
 
 def preprocess_injury_report(pdf_path):
+    """
+    Extracts and processes data from an NBA injury report PDF.
+    
+    Parameters:
+    pdf_path (str): Path to the injury report PDF file.
+    
+    Returns:
+    pd.DataFrame: Processed DataFrame containing structured injury report data.
+    """
     with pdfplumber.open(pdf_path) as pdf:
         df = pd.DataFrame()
-        # Access the total number of pages
         num_pages = len(pdf.pages)
         for i in range(num_pages):
-            # Select a specific page
             page = pdf.pages[i]  
-
             text = page.extract_text(x_tolerance=2)
             lines_list = text.split("\n")
             page_df = pd.DataFrame(lines_list, columns=['raw_string'])
-
-            # Retain date and time of injury report
+            
             if i == 0:
+                # Retain date and time of injury report
                 injury_report_datetime = page_df.loc[0, 'raw_string']
-
-                # Drop first two rows
                 page_df = page_df.drop([0, 1])
             else:
-                # Drop first row
                 page_df = page_df.drop(0)
 
-            # Check for multirow entry
+            # Apply functions so that we know how to format each row
             page_df = fix_multi_row_entry_problem(page_df)
-
-            # Check for the start of a new date
             page_df = check_for_new_date(page_df)
-
-            # Check for start of new time
             page_df = check_for_start_of_new_time(page_df)
-
-            # Check for start of new matchup
             page_df = check_for_start_of_new_matchup(page_df)
-
-            # Check for start of new team
             page_df = check_for_start_of_new_team(page_df)
-
-            # Check for whether the report has been submitted
             page_df = check_for_not_yet_submitted(page_df)
 
             # Drop the last row with the page number
@@ -258,35 +271,30 @@ def preprocess_injury_report(pdf_path):
         # Add injury report date and time as a column
         df['Injury Report Date and Time'] = injury_report_datetime[15:]
 
-    # Reset index
     df = df.reset_index(drop=True)
 
     return df
 
 
-def find_team_name_end_index(raw_string):
-    '''
-    Finds the index where the NBA team name ends in trunc_raw_string.
-    The team name may not necessarily start at the beginning of the string.
-    '''
-    nba_team_list = get_nba_team_list()
-    
-    for team in nba_team_list:
-        match = re.search(r'\b' + re.escape(team) + r'\b', raw_string)
-        if match:
-            return match.end()  # Return the index where the team name ends
-    
-    return None  # If no team name is found
-
-
 def extract_new_date_data(raw_string):
+    """
+    For lines of the pdf that begin with a new date,
+    extract the game date, time, matchup, and team name 
+    from that line's raw string.
+    
+    Parameters:
+    raw_string (str): The raw string containing game details.
+    
+    Returns:
+    tuple: (game_date, game_time, matchup, team_name, player_idx)
+    """
     # Date, time and matchup always have the same lengths
     game_date = raw_string[:10]
     game_time = raw_string[12:21]
     matchup = raw_string[22:29]
 
     # The team name has a length that varies. We search for end of team name
-    team_name_end_idx = find_team_name_end_index(raw_string)
+    _, team_name_end_idx = find_team(raw_string)
     team_name = raw_string[30:team_name_end_idx]
     player_idx = team_name_end_idx + 1
 
@@ -294,12 +302,23 @@ def extract_new_date_data(raw_string):
 
 
 def extract_new_time_data(raw_string):
+    """
+    For lines of the pdf that begin with a new time,
+    extract the time, matchup, and team name 
+    from that line's raw string.
+    
+    Parameters:
+    raw_string (str): The raw string containing game details.
+    
+    Returns:
+    tuple: (game_time, matchup, team_name, player_idx)
+    """
     # Time and matchup always have the same lengths
     game_time = raw_string[:10]
     matchup = raw_string[11:18]
 
     # The team name has a length that varies. We search for end of team name
-    team_name_end_idx = find_team_name_end_index(raw_string)
+    _, team_name_end_idx = find_team(raw_string)
     team_name = raw_string[19:team_name_end_idx]
     player_idx = team_name_end_idx + 1
 
@@ -307,11 +326,22 @@ def extract_new_time_data(raw_string):
 
 
 def extract_new_matchup_data(raw_string):
+    """
+    For lines of the pdf that begin with a new matchup,
+    extract the matchup, and team name from that line's 
+    raw string.
+    
+    Parameters:
+    raw_string (str): The raw string containing game details.
+    
+    Returns:
+    tuple: (matchup, team_name, player_idx)
+    """
     # Matchup always has the same length
     matchup = raw_string[:7]
 
     # The team name has a length that varies. We search for end of team name
-    team_name_end_idx = find_team_name_end_index(raw_string)
+    _, team_name_end_idx = find_team(raw_string)
     team_name = raw_string[8:team_name_end_idx]
     player_idx = team_name_end_idx + 1
 
@@ -319,8 +349,17 @@ def extract_new_matchup_data(raw_string):
 
 
 def extract_new_team_data(raw_string): 
-    # The team name has a length that varies. We search for end of team name
-    team_name_end_idx = find_team_name_end_index(raw_string)
+    """
+    For lines of the pdf that begin with a new team,
+    extract the team name from that line's raw string.
+    
+    Parameters:
+    raw_string (str): The raw string containing game details.
+    
+    Returns:
+    tuple: (team_name, player_idx)
+    """
+    _, team_name_end_idx = find_team(raw_string)
     team_name = raw_string[:team_name_end_idx]
     player_idx = team_name_end_idx + 1
 
@@ -329,7 +368,8 @@ def extract_new_team_data(raw_string):
 
 def find_start_and_end_of_word_in_list(raw_string, word_list):
     """
-    Finds the start and end index of the first occurrence of any word in the_list within the string s.
+    Finds the start and end index of the first occurrence of any word 
+    in word_list within the raw_string.
 
     Parameters:
     raw_string (str): The input string to search within.
@@ -348,7 +388,15 @@ def find_start_and_end_of_word_in_list(raw_string, word_list):
 
 
 def find_status(raw_string):
-    # Get list of possible statuses
+    """
+    Finds the start and end indices of a player's status within a raw string.
+    
+    Parameters:
+    raw_string (str): The raw string containing the status.
+    
+    Returns:
+    tuple: (status_start_idx, status_end_idx)
+    """
     status_list = get_status_list()
 
     status_start_idx, status_end_idx = ( 
@@ -358,6 +406,15 @@ def find_status(raw_string):
 
 
 def find_team(raw_string):
+    """
+    Finds the start and end indices of a team name within a raw string.
+    
+    Parameters:
+    raw_string (str): The raw string containing the team name.
+    
+    Returns:
+    tuple: (team_start_idx, team_end_idx)
+    """
     nba_team_list = get_nba_team_list()
 
     team_start_idx, team_end_idx = ( 
@@ -367,6 +424,16 @@ def find_team(raw_string):
 
 
 def extract_player_status_comment_data(raw_string, player_idx):
+    """
+    Extracts the player's name, injury status, and comment from a raw string.
+    
+    Parameters:
+    raw_string (str): The raw string containing player details.
+    player_idx (int): The starting index of the player's name.
+    
+    Returns:
+    tuple: (player_name, status, comment)
+    """
     status_start_idx, status_end_idx = find_status(raw_string)
     player_name = raw_string[player_idx: status_start_idx - 1]
     status = raw_string[status_start_idx: status_end_idx]
@@ -375,13 +442,25 @@ def extract_player_status_comment_data(raw_string, player_idx):
 
 
 def pdf_to_df(pdf_path):
+    """
+    Processes an NBA injury report PDF and extracts structured data 
+    into a Pandas DataFrame.
+    
+    Parameters:
+    pdf_path (str): The file path to the injury report PDF.
+    
+    Returns:
+    pd.DataFrame: A DataFrame containing structured injury report data, 
+                  including game details, player statuses, and reasons 
+                  for injuries.
+    """
     df = preprocess_injury_report(pdf_path)
 
     for i in range(len(df)):
-        # Defaultly set the index the player's name starts to zero
+        # Default index for player's name
         player_idx = 0
         
-        # Game Date
+        # Extract game details based on the type of entry detected
         if df.loc[i, 'start_of_new_date'] == True:
             game_date, game_time, matchup, team_name, player_idx = ( 
                 extract_new_date_data(df.loc[i, 'raw_string'])
@@ -396,12 +475,14 @@ def pdf_to_df(pdf_path):
             )
         if df.loc[i, 'start_of_new_team'] == True:
             team_name, player_idx = extract_new_team_data(df.loc[i, 'raw_string'])
-            
+        
+        # Store extracted game information in DataFrame columns
         df.loc[i, 'Game Date'] = game_date
         df.loc[i, 'Game Time'] = game_time
         df.loc[i, 'Matchup'] = matchup
         df.loc[i, 'Team'] = team_name
 
+        # Extract player status and comments if the report has been submitted
         if df.loc[i, 'not_yet_submitted'] == False:
             player_name, status, comment = ( 
                 extract_player_status_comment_data(df.loc[i, 'raw_string'], player_idx)
@@ -414,6 +495,7 @@ def pdf_to_df(pdf_path):
             df.loc[i, 'Current Status'] = '' 
             df.loc[i, 'Reason'] = 'NOT YET SUBMITTED'
 
+    # Drop unnecessary raw columns used for processing
     df = df.drop(columns=['raw_string', 'multi_row_entry', 'start_of_new_date', 
                             'start_of_new_time', 'start_of_new_matchup', 'start_of_new_team',
                             'not_yet_submitted'])
