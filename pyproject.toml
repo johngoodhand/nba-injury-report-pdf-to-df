@@ -16,5 +16,5 @@ dependencies = [
 requires-python = ">=3.11"
 
 [tool.setuptools]
-packages = ["nba-injury-report-pdf-to-df"]
+packages = ["nba_injury_report_pdf_to_df"]
 package-dir = {"" = "src"}
