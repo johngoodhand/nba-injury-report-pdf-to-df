@@ -56,7 +56,9 @@ These dependencies are automatically installed with the package.
 ## Contributing
 
 Contributions are welcome!  
+
 If you encounter issues or have suggestions for improvements, please open an issue or submit a pull request on the GitHub repository:  
+
 https://github.com/johngoodhand/nba-injury-report-pdf-to-df
 
 ## License
