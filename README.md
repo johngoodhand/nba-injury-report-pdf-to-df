@@ -20,7 +20,7 @@ pip install nba_injury_report_pdf_to_df
 Here's how you can use the pdf_to_df function:
 
 ```python
-from nba-injury-report-pdf-to-df import pdf_to_df
+from nba_injury_report_pdf_to_df import pdf_to_df
 
 # Path to your local NBA injury report PDF
 pdf_path = "path/to/your/injury_report.pdf"
