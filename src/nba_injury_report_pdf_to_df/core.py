@@ -2,7 +2,6 @@
 import re
 import pandas as pd
 import pdfplumber
-from utils import path 
 
 
 def get_nba_team_list():
@@ -501,10 +500,3 @@ def pdf_to_df(pdf_path):
                             'not_yet_submitted'])
     
     return df
-
-
-if __name__ == '__main__':
-    pdf_path = path('injury_report_pdfs', 
-                    'Injury-Report_2025-01-10_05PM.pdf', 
-                    levels_up=2)
-    df = pdf_to_df(pdf_path)
